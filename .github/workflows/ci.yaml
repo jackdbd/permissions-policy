@@ -134,7 +134,7 @@ jobs:
         run: npm run build:lib
       
       - name: 🔍 Test
-        run: npm run test
+        run: npm run test:ci
 
   windows-build-test:
     name: Build & test on ${{ matrix.os }}, Node ${{ matrix.node }}
@@ -161,4 +161,4 @@ jobs:
         run: npm run build:lib
       
       - name: 🔍 Test
-        run: npm run test
+        run: npm run test:ci
