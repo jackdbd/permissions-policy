@@ -1,0 +1,160 @@
+name: 'CI'
+
+on:
+  pull_request:
+  push:
+    branches:
+    - canary
+    - main
+
+jobs:
+  audit-build-test-release:
+    name: Audit, build, test, release on ${{ matrix.os }}, Node ${{ matrix.node }}
+
+    # The minimum set of permissions required by semantic-release/github for
+    # the GITHUB_TOKEN and this job is explained here:
+    # https://github.com/semantic-release/github#configuration
+    # https://github.com/semantic-release/semantic-release/issues/2481#issuecomment-1409780688
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      # If we try to run more than one job in parallel, uploading the test coverage
+      # to CodeCov fails with NameError: name 'exit' is not defined.
+      max-parallel: 1
+      matrix:
+        # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
+        os: [ubuntu-latest]
+        # Test all packages with:
+        # 1. Maintenance LTS
+        # 2. Active LTS
+        # 3. Current (i.e. the latest Node.js version available)
+        # https://nodejs.org/en/about/previous-releases
+        node: [lts/Iron]
+        # node: [lts/Hydrogen, lts/Iron, current]
+    steps:
+      - name: 🛎️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Set up Node.js ${{ matrix.node }}
+        # https://github.com/marketplace/actions/setup-node-js-environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: ⬇️ Install dependencies
+        run: npm ci
+
+      - name: ⬇️ Install only devDependencies required to build docs
+        if: matrix.os == 'ubuntu-latest'
+        run: npm i -D @jackdbd/checks @microsoft/api-documenter @microsoft/api-extractor typedoc zx
+      
+      - name: 🛡️ Audit dependencies (audit-level high)
+        # https://docs.npmjs.com/cli/v8/commands/npm-audit#audit-level
+        run: npm audit --audit-level high
+
+      - name: 🛡️ Audit dependencies (audit-level moderate)
+        continue-on-error: true
+        run: npm audit --audit-level moderate
+
+      - name: 🔨 Build TypeScript files
+        run: npm run build:lib
+
+      - name: 🔍 Test on Linux
+        run: npm run test:ci
+      
+      - name: ⬆️ Upload test coverage to Codecov
+        if: runner.os == 'Linux'
+        # https://github.com/marketplace/actions/codecov
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          fail_ci_if_error: false
+          files: ./lcov.info
+          verbose: true
+
+      - run: npx publint run .
+
+      - name: 📦 Size report
+        if: ${{ github.event_name == 'pull_request' && matrix.os == 'ubuntu-latest' }}
+        # https://github.com/marketplace/actions/pkg-size-action
+        uses: pkg-size/action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          build-command: false # no need to build again
+          comment-report: true
+          display-size: uncompressed,gzip,brotli
+          # ignore all docs, TS type definitions and JS/TS source maps
+          hide-files: '{api-docs/**,docs/**,*.d.ts,*.map}'
+          unchanged-files: show
+
+      - name: 🚀 Release to npmjs
+        if: ${{ matrix.os == 'ubuntu-latest' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/canary') }}
+        env:
+          # This github token must allow to push to this GitHub repository.
+          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_BOT_GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.SEMANTIC_RELEASE_BOT_NPM_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ fromJSON(secrets.TELEGRAM).token }}
+          TELEGRAM_CHAT_ID: ${{ fromJSON(secrets.TELEGRAM).chat_id }}
+        run: npx semantic-release --ci
+
+  macos-build-test:
+    name: Build & test on ${{ matrix.os }}, Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        os: [macos-latest]
+        node: [lts/Iron]
+    steps:
+      - name: 🛎️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Set up Node.js ${{ matrix.node }}
+        # https://github.com/marketplace/actions/setup-node-js-environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: ⬇️ Install dependencies
+        run: npm ci
+      
+      - name: 📦 Build npm package
+        run: npm run build:lib
+      
+      - name: 🔍 Test
+        run: npm run test
+
+  windows-build-test:
+    name: Build & test on ${{ matrix.os }}, Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        os: [windows-latest]
+        node: [lts/Iron]
+    steps:
+      - name: 🛎️ Checkout repo
+        uses: actions/checkout@v4
+      
+      - name: ⚙️ Set up Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      
+      - name: ⬇️ Install dependencies
+        run: npm ci
+      
+      - name: 📦 Build npm package
+        run: npm run build:lib
+      
+      - name: 🔍 Test
+        run: npm run test

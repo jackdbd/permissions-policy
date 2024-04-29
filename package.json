@@ -1,0 +1,123 @@
+{
+  "name": "@jackdbd/permissions-policy",
+  "version": "1.0.0-canary.1",
+  "description": "Define your `Permissions-Policy` in JavaScript and let this library generate the header for you.",
+  "author": {
+    "name": "Giacomo Debidda",
+    "email": "giacomo@giacomodebidda.com",
+    "url": "https://giacomodebidda.com/"
+  },
+  "license": "MIT",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "feature-policy",
+    "permissions-policy",
+    "security-headers"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jackdbd/permissions-policy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jackdbd/permissions-policy/issues?q=is%3Aissue+label%3Abug"
+  },
+  "homepage": "https://github.com/jackdbd/permissions-policy/tree/main#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js"
+    },
+    "./*": {
+      "types": "./lib/*.d.ts",
+      "import": "./lib/*.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./lib/*.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "lib"
+  ],
+  "scripts": {
+    "build": "run-s 'build:lib' 'readme' 'docs' 'publint' --print-label",
+    "build:lib": "tsc -p tsconfig.json",
+    "build:lib:watch": "tsc -p tsconfig.json --watch",
+    "clean": "rm -rf .ae/doc/ .ae/temp/ coverage/ lib/ tsconfig.tsbuildinfo",
+    "deps": "taze",
+    "dev": "run-p build:lib:watch test:watch",
+    "docs": "run-s 'docs:ae' 'docs:ad' 'docs:typedoc' --print-label",
+    "docs:ae": "./scripts/api-extractor.mjs",
+    "docs:ad": "./scripts/api-documenter.mjs",
+    "docs:typedoc": "./scripts/typedoc.mjs",
+    "format": "prettier --config config/prettier.cjs --write ./{src,test}/**/*.{cjs,js,mjs,ts}",
+    "lint": "eslint --config ./config/eslint.cjs",
+    "nuke": "npm run clean && rm -rf node_modules 'package-lock.json'",
+    "precommit": "lint-staged --config ./config/lint-staged.cjs",
+    "publint": "publint run .",
+    "readme": "tsm ./scripts/readme.ts",
+    "release:dry": "npx semantic-release --no-ci --debug --dry-run",
+    "size": "pkg-size ./lib --sort-by=brotli --ignore-files {*.d.ts,*.map}",
+    "test": "DEBUG='permissions-policy' node --test --experimental-test-coverage",
+    "test:ci": "node --test --experimental-test-coverage --test-reporter=@reporters/github --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=lcov.info",
+    "test:watch": "DEBUG='' node --test --watch"
+  },
+  "dependencies": {
+    "zod": "^3.23.4",
+    "zod-validation-error": "^3.2.0"
+  },
+  "peerDependencies": {
+    "debug": ">=4.0.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.3.0",
+    "@commitlint/config-conventional": "^19.2.2",
+    "@jackdbd/zod-to-doc": "^1.1.1",
+    "@microsoft/api-documenter": "^7.24.2",
+    "@microsoft/api-extractor": "^7.43.1",
+    "@reporters/github": "^1.7.0",
+    "@semantic-release/changelog": "latest",
+    "@semantic-release/commit-analyzer": "latest",
+    "@semantic-release/exec": "latest",
+    "@semantic-release/git": "latest",
+    "@semantic-release/release-notes-generator": "latest",
+    "@thi.ng/transclude": "^0.1.89",
+    "@types/debug": "latest",
+    "@typescript-eslint/eslint-plugin": "latest",
+    "@typescript-eslint/parser": "latest",
+    "conventional-changelog-conventionalcommits": "latest",
+    "eslint": "latest",
+    "eslint-config-prettier": "latest",
+    "eslint-plugin-prettier": "latest",
+    "lint-staged": "latest",
+    "npm-run-all": "latest",
+    "pkg-size": "latest",
+    "prettier": "latest",
+    "pretty-error": "latest",
+    "publint": "latest",
+    "semantic-release": "^23.0.8",
+    "semantic-release-telegram": "^1.6.2",
+    "serve": "latest",
+    "simple-git-hooks": "^2.11.1",
+    "taze": "latest",
+    "tsm": "^2.3.0",
+    "typedoc": "^0.25.13",
+    "zx": "^8.0.2"
+  },
+  "simple-git-hooks": {
+    "pre-push": "npx commitlint --config ./config/commitlint.cjs --to HEAD"
+  }
+}
